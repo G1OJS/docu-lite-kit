@@ -9,7 +9,7 @@ class block:
         self.children = []
         
     def __repr__(self):
-        return f"<line {self.first_line}: {self.type} {self.definition} , indent={self.indent}, docstring = {self.docstring}>"
+        return f"<line {self.first_line}: {self.type} {self.definition} , indent={self.indent}, docstring = '{self.docstring}'>"
 
 class doc_object_tree:
     def __init__(self, filepath):
@@ -34,7 +34,7 @@ class doc_object_tree:
             if(docstring_lines is not None):
                 docstring_lines.append(lines[j])
                 if(delimeter in lines[j]):
-                    return " ".join(docstring_lines).replace(delimeter,'')
+                    return "\n".join(line.rstrip() for line in docstring_lines).replace(delimeter, '').strip()
         return ""
 
     def _build_doc_tree(self):
