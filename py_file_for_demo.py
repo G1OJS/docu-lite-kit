@@ -1,5 +1,5 @@
 """
-    standard docstring
+    standard file level docstring
     lines 1 to 4
 """
 def func_one():
@@ -8,7 +8,7 @@ def func_one():
 
 def func_two():
     """ line 10 docstring with text on start line and standard close
-        here's line 11
+            here's line 11 with an extra indent
     """
 
 def func_three():
