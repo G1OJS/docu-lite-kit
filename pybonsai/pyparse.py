@@ -3,12 +3,14 @@ class pbNode:
         self.indent = self._line_indent(doclines[first_line_number])
         self.signature = doclines[first_line_number].split()
         self.first_line_number = first_line_number
+        self.content_start_line_number = first_line_number
+        self.last_line_number = len(doclines) - 1
         self.docstring = ""
         self.twigs = []
 
         docstring_lines = None
         line_no = first_line_number - 1
-        while (line_no  < len(doclines) - 1):
+        while (line_no  < self.last_line_number):
             line_no += 1
             if(docstring_lines is None):
                 docstring_delimeter = self._has_docstring_delimeter(doclines[line_no])
@@ -21,9 +23,15 @@ class pbNode:
                     self.docstring = [line.rstrip().replace(docstring_delimeter, '').replace('\n','') for line in docstring_lines]
                     self.docstring = [line for cnt,line in enumerate(self.docstring) if line.strip() or (cnt !=0 and cnt != len(self.docstring)-1)]
                     docstring_lines = None
-            if(line_no < len(doclines) -1):
-                if(doclines[line_no+1].rstrip().endswith(':')):
+                    self.content_start_line_number = line_no + 1
+            if(line_no < self.last_line_number):
+                new_block = doclines[line_no+1].rstrip().endswith(':')
+                dedent = ( (docstring_lines is None) and self._line_indent(doclines[line_no+1]) <= self.indent )
+                if(new_block or dedent):
+                    self.last_line_number = line_no+1
                     break
+        self.content = [line.rstrip().replace('\n','') for line in doclines[self.content_start_line_number:self.last_line_number]]
+
             
     def _line_indent(self, line):
         line = line.rstrip()
@@ -49,8 +57,8 @@ class pbTree:
         self.pbRoot = pbNode(0, doclines)
         self.pbNodes = [self.pbRoot]
         ancestry = [self.pbRoot]
-        while (self.pbNodes[-1].first_line_number < len(doclines) -1):
-            self.pbNodes.append(pbNode(self.pbNodes[-1].first_line_number+1, doclines))
+        while (self.pbNodes[-1].last_line_number < len(doclines) -1):
+            self.pbNodes.append(pbNode(self.pbNodes[-1].first_line_number + 1, doclines))
             while ancestry and self.pbNodes[-1].indent < ancestry[-1].indent:
                 ancestry.pop()
             ancestry[-1].twigs.append(self.pbNodes[-1])
