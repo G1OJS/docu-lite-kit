@@ -46,18 +46,19 @@ def print_pb(pbNode, types):
     for pbTwig in pbNode.twigs:
         print_pb(pbTwig, types)
 
-file = r"./demo_minimal.py"
-print(f"Simple listing of test file {file}\n")
-print_lines(file)
-print(f"\nExample listing of pybonsai tree:\n")
-pbTree = pybonsai.pbTree(file)
-print_pb(pbTree.pbRoot, ['def', 'class'])
 
-"""
-final docstring
-"""
+def main():
+    """
+        docstring for main
+    """
+    
+    file = r"./demo_minimal.py"
+    print(f"Simple listing of test file {file}\n")
+    print_lines(file)
+    print(f"\nExample listing of pybonsai tree:\n")
+    pbTree = pybonsai.pbTree(file)
+    print_pb(pbTree.pbRoot, ['def', 'class'])
 
-
-
-
+if __name__ == "__main__":
+    main()
 
