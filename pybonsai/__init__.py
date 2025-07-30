@@ -1,7 +1,7 @@
 """
     Standard Python initialiser handling imports from modules and version number
 """
-from .pyparse_v2 import doc_object_tree
+from .pyparse import pbTree
 
 from importlib.metadata import version
 try:
