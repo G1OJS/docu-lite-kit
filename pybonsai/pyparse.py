@@ -20,15 +20,42 @@ class pbBlock:
         self.pattern = pattern
         self.signature = ""
         self.icon = ""
+        self.docstring = ""
+        self.body = ""
 
         line = doclines[self.first_line_number].rstrip()
         if(len(line.strip()) != 0):
             self.indent_spaces = len(line) - len(line.lstrip())
 
-    # may be much easier to mod this to search forwards from first line, return any docstring and then other content
-    # rather than fill in all the end line numbers globally as currently
-    def get_content(self, doclines):
-        return doclines[self.first_line_number:self.last_line_number+1]
+    def fill_content(self, doclines):
+        lines = doclines[self.first_line_number+1:self.last_line_number+1]
+        content_start = 0
+        docstring_delimeter = False
+        docstring_start = False
+        docstring_end = False
+        line_no = 0
+        # may be able to combine these two whiles
+        while(line_no < len(lines)-1 and not docstring_delimeter):
+            docstring_delimeter = self._has_docstring_delimeter(lines[line_no])
+            if (docstring_delimeter):
+                docstring_start = line_no
+            line_no +=1
+            self.last_line_number = self.first_line_number ###########
+        if(docstring_delimeter):
+            while(line_no < len(lines)-1 and not docstring_end):
+                if (lines[line_no].strip().endswith(docstring_delimeter)):
+                    docstring_end = line_no
+                line_no +=1            
+            self.docstring = lines[docstring_start:docstring_end + 1]     
+            content_start = docstring_end + 1
+        self.body = lines[content_start:]
+
+    def _has_docstring_delimeter(self, line):
+        """ finds lines with three quotes at the beginning of a line"""
+        for delim in ['"""',"'''"]:
+            if(line.strip().startswith(delim)):
+                return delim
+        return False
         
 class pbBlocks:
     """
@@ -45,20 +72,9 @@ class pbBlocks:
             pattern_found = self._has_pattern(line)
             if(pattern_found):
                 self.blocks.append(pbBlock(line_no, doclines, pattern_found))
-            else:
-                docstring_closure = self._has_docstring_delimeter(line)
-                if(docstring_closure):
-                    if(not in_docstring):
-                        self.blocks.append(pbBlock(line_no, doclines, 'docstring'))
-                        in_docstring = not self._has_docstring_delimeter(line.replace(docstring_closure,'',1))
-                    else:
-                        in_docstring = False
-                        self.blocks[-1].last_line_number = line_no
-     
+         
         # set object signatures
         for block in self.blocks[1:]:
-            if(block.pattern == 'docstring'):
-                continue
             first_line = doclines[block.first_line_number]
             if("(" in first_line):
                 lno = block.first_line_number
@@ -77,15 +93,19 @@ class pbBlocks:
                 indents.append(pbB.indent_spaces)
             pbB.indent_level = indents.index(pbB.indent_spaces)
 
-        # find and set last line numbers
+        # find and set last line numbers (######### needs review following change to docstring finder)
+        close_on_first = True
         for block_number, block in enumerate(self.blocks[1:]):
-            bn = block_number
-            while(bn>0):
-                if(block.indent_level <= self.blocks[bn].indent_level):
-                    potential_last_line_number = block.first_line_number - 1
-                    if(potential_last_line_number < self.blocks[bn].last_line_number):
-                        self.blocks[bn].last_line_number = potential_last_line_number
-                bn -= 1
+            bn = block_number + 1
+            while(bn < len(self.blocks)-1):
+                bn += 1
+                if(self.blocks[bn].indent_level <= block.indent_level or close_on_first):
+                        block.last_line_number = self.blocks[bn].first_line_number - 1
+                        break
+
+        # fill content including any docstrings
+        for block in self.blocks:
+            block.fill_content(doclines)
 
     def _has_pattern(self, line):
         l = line.strip()
@@ -93,14 +113,6 @@ class pbBlocks:
             if (l.startswith(pat) and line.endswith(':\n')):
                 return line.split()[0]
         return False
-
-    def _has_docstring_delimeter(self, line):
-        """ finds lines with three quotes at the beginning and/or end of a line """
-        for delim in ['"""',"'''"]:
-            if(line.strip().startswith(delim) or line.strip().endswith(delim)):
-                return delim
-        return False
-
 
 class test:
     def __init__(self, pyfile):
@@ -111,7 +123,7 @@ class test:
         print("-" * 89)
         for lno, line in enumerate(pylines):
             src = line.rstrip()
-            block_info = first_line_info[lno] if lno in first_line_info else f"src: {src}"
+            block_info = first_line_info[lno] if lno in first_line_info else f""
             print(f"{lno+1:<5} | {src[:25]:<25} | {block_info:<25}")
 
     def _fString(self, pbBlock):
@@ -129,11 +141,15 @@ class pbBrowser:
         self.html =  f"<!DOCTYPE html><html lang='en'>\n<head>\n<title></title>"
         self.html += f"<link rel='stylesheet' href='./{style_sheet_file}' />"
         prev_indent = 0
+        count = 0
         for pbB in self.blocks:
             self.html += self._signature_html(pbB.pattern, pbB.signature, True)
-            self.html += self._content_html(pbB.pattern, pbB.get_content(self.pylines))
+            if(pbB.docstring != ""):
+                self.html += self._content_html('docstring', pbB.docstring)   
+            self.html += self._content_html(pbB.pattern, pbB.body)
             self.html += self._close_details(pbB.indent_level-prev_indent+1 )
             prev_indent = pbB.indent_level
+            count +=1
         soft_string = ''
         self.html += f"\n<br><br><span style = 'font-size:0.8em;color:#666;border-top:1px solid #ddd; "
         self.html += f"font-style:italic'>Made with {soft_string}</span></body>\n"
@@ -180,7 +196,10 @@ class pbListAPI:
         a=1
 
 def main():
-   # t = test("./pyparse.py")
+#    t = test("./pyparse.py")
+
+#    t = test(r"C:\Users\drala\Documents\Projects\GitHub\NECBOL\necbol\modeller.py")
+
     output_html_file = "test.html"
     htm = pbBrowser(r"C:\Users\drala\Documents\Projects\GitHub\NECBOL\necbol\modeller.py").html
     with open(output_html_file, "w", encoding="utf-8") as f:
