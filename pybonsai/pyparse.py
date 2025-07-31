@@ -8,11 +8,12 @@ class files:
             return f.readlines()
 
 class pbNode:
-    def __init__(self, first_line_number, line, object_pattern):
+    def __init__(self, first_line_number, line, object_pattern, doc_ord):
         self.first_line_number = first_line_number
         self.line_indent = self._line_indent(line)
         self.object_pattern = object_pattern
         self.last_line_number = 0
+        self.doc_ord = doc_ord
         self.twigs = []
         
     def _line_indent(self, line):
@@ -31,16 +32,16 @@ class pbList:
     def __init__(self, doc_objects, doclines, object_patterns = ['def', 'class']):
         self.object_patterns = object_patterns
         self.objects = doc_objects
-
+        ancestry = pbNode(0,"","",0)
         in_docstring = False
         for line_no, line in enumerate(doclines):
             object_pattern_found = self._has_object_pattern(line)
             if (object_pattern_found):
-                self.objects.append(pbNode(line_no, line, object_pattern_found))
+                self.objects.append(pbNode(line_no, line, object_pattern_found, len(self.objects)))
             docstring_closure = self._has_docstring_delimeter(line)
             if(docstring_closure):
                 if(not in_docstring):
-                    self.objects.append(pbNode(line_no, line, 'docstring'))
+                    self.objects.append(pbNode(line_no, line, 'docstring',  len(self.objects)))
                     in_docstring = True
                 else:
                     self.objects[-1].last_line_number = line_no
@@ -60,6 +61,31 @@ class pbList:
         return False
 
 
+class pbTree:
+    """
+        Uses pbList to get flat list if one doesn't already exist, and packages this into a tree structure based
+        on the indent level of each object
+    """
+    def __init__(self, doc_objects):
+        self.objects = doc_objects
+        self.root = pbNode(0,"","",0)
+        ancestry = [self.root]
+        to_remove = []
+        # this loop needs work - it's not appending twigs to the twigs?
+        for pbN in self.objects:
+            if(pbN.line_indent > ancestry[-1].line_indent):
+                ancestry[-1].twigs.append(pbN)
+                to_remove.append(pbNode)
+        for pbN in to_remove:
+            self.objects.remove(pbN)
+
+    def print_pb(pbNode):
+        # is this print loop correct?
+        indent_str = "    " * pbNode.line_indent + "|"
+        print(f"{indent_str} line {pbNode.first_line_number + 1} info: {pbNode.object_pattern}'\n")
+        for pbTwig in pbNode.twigs:
+            print_pb(pbTwig)
+
 class test:
     # where to set last line number - naturally when making tree?
     def __init__(self, pyfile):
@@ -77,23 +103,21 @@ class test:
                     dline += pat + " ->" + str(ll)
             print(dline) 
             indent_str = ">" * pbNode.line_indent + "|"
-        
 
-class pbTree:
-    """
-        Uses pbList to get flat list if one doesn't already exist, and packages this into a tree structure based
-        on the indent level of each object
-    """
-    def __init__(self, doc_objects):
-        self.doc_objects = doc_objects
-            
-        
+        tree = pbTree(doc_objects)
+        pbTree.print_pb(tree.root)
+
+
+
 
 
 class pbBrowser:
     """
         Generates HTML for expandable node list representing the document tree
     """
+
+
+    
     def _format_docstring(self, docstring_lines):
         lines = [line.rstrip().replace(docstring_delimeter, '') for line in docstring_lines]
 
