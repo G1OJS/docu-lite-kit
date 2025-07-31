@@ -8,106 +8,119 @@ class files:
             return f.readlines()
 
 class pbNode:
-    def __init__(self, first_line_number, line, object_pattern, doc_ord):
+    def __init__(self, first_line_number, doclines, pattern):
         self.first_line_number = first_line_number
-        self.line_indent = self._line_indent(line)
-        self.object_pattern = object_pattern
+        self.line_indent = 10000
+        self.pattern = pattern
+        self.signature = ""
         self.last_line_number = 0
-        self.doc_ord = doc_ord
         self.twigs = []
-        
-    def _line_indent(self, line):
-        line = line.rstrip()
-        if(len(line.strip()) == 0):
-            return 1000
-        else:
-            return len(line) - len(line.lstrip())
 
-class pbList:
+        line = doclines[self.first_line_number].rstrip()
+        if(len(line.strip()) != 0):
+            self.line_indent = len(line) - len(line.lstrip())
+
+class pbTree:
     """
-        Uses the docu-lite method of reading all lines sequentially to generate a flat list of objects where
-        docstring and non-docstring content are counted as objects alongside object_pattern objects. The purpose of
+        Uses the docu-lite method of reading all lines sequentially to generate a flat list of blocks where
+        docstring and non-docstring content are counted as blocks alongside pattern blocks. The purpose of
         doing this is to ensure that nothing is missed, and this list is organised into a tree later
     """
-    def __init__(self, doc_objects, doclines, object_patterns = ['def', 'class']):
-        self.object_patterns = object_patterns
-        self.objects = doc_objects
-        ancestry = pbNode(0,"","",0)
+    def __init__(self, doclines, patterns = ['def', 'class']):
+        self.patterns = patterns
+        self.block_list = []
+        self.root = pbNode(0, "root()", "root")
+        self.block_tree =[self.root]
+
+        # get all blocks in a flat list
         in_docstring = False
         for line_no, line in enumerate(doclines):
-            object_pattern_found = self._has_object_pattern(line)
-            if (object_pattern_found):
-                self.objects.append(pbNode(line_no, line, object_pattern_found, len(self.objects)))
-            docstring_closure = self._has_docstring_delimeter(line)
-            if(docstring_closure):
-                if(not in_docstring):
-                    self.objects.append(pbNode(line_no, line, 'docstring',  len(self.objects)))
-                    in_docstring = True
-                else:
-                    self.objects[-1].last_line_number = line_no
-                    in_docstring = False
+            pattern_found = self._has_pattern(line)
+            if(pattern_found):
+                self.block_list.append(pbNode(line_no, doclines, pattern_found))
+            else:
+                docstring_closure = self._has_docstring_delimeter(line)
+                if(docstring_closure):
+                    if(not in_docstring):
+                        self.block_list.append(pbNode(line_no, doclines, 'docstring'))
+                        in_docstring = not self._has_docstring_delimeter(line.replace(docstring_closure,'',1))
+                    else:
+                        in_docstring = False
+     
+        # set object signatures
+        for block in self.block_list[1:]:
+            if(block.pattern == 'docstring'):
+                continue
+            first_line = doclines[block.first_line_number]
+            if("(" in first_line):
+                lno = block.first_line_number
+                sigtext = ""
+                while not (')' in sigtext):
+                    sigtext += doclines[lno].strip()
+                    lno += 1
+                block.signature = sigtext[:sigtext.find(')')+1].replace(block.pattern,'')
+            else:
+                block.signature = first_line.split()[1:]
 
-    def _has_object_pattern(self, line):
+        # make the document tree
+        ancestry = [self.root]
+        for pbN in self.block_list:
+            # Find parent by comparing indentation
+            while len(ancestry)>1 and pbN.line_indent < ancestry[-1].line_indent:
+                ancestry.pop()
+            ancestry[-1].twigs.append(pbN)
+            ancestry.append(pbN)
+
+    def _has_pattern(self, line):
         l = line.strip()
-        for pat in self.object_patterns:
+        for pat in self.patterns:
             if (l.startswith(pat) and line.endswith(':\n')):
                 return line.split()[0]
         return False
 
-    def _has_docstring_delimeter(self,line):
+    def _has_docstring_delimeter(self, line):
+        """ finds lines with three quotes at the beginning and/or end of a line """
         for delim in ['"""',"'''"]:
             if(line.strip().startswith(delim) or line.strip().endswith(delim)):
                 return delim
         return False
 
 
-class pbTree:
-    """
-        Uses pbList to get flat list if one doesn't already exist, and packages this into a tree structure based
-        on the indent level of each object
-    """
-    def __init__(self, doc_objects):
-        self.objects = doc_objects
-        self.root = pbNode(0,"","",0)
-        ancestry = [self.root]
-        to_remove = []
-        # this loop needs work - it's not appending twigs to the twigs?
-        for pbN in self.objects:
-            if(pbN.line_indent > ancestry[-1].line_indent):
-                ancestry[-1].twigs.append(pbN)
-                to_remove.append(pbNode)
-        for pbN in to_remove:
-            self.objects.remove(pbN)
-
-    def print_pb(pbNode):
-        # is this print loop correct?
-        indent_str = "    " * pbNode.line_indent + "|"
-        print(f"{indent_str} line {pbNode.first_line_number + 1} info: {pbNode.object_pattern}'\n")
-        for pbTwig in pbNode.twigs:
-            print_pb(pbTwig)
-
 class test:
-    # where to set last line number - naturally when making tree?
     def __init__(self, pyfile):
-        doc_objects = []
         pylines = files(pyfile).lines
-        doc_objects = pbList(doc_objects, pylines, ['def','class']).objects
-        scopelist = []
-        for pbNode in doc_objects:
-            scopelist.append((pbNode.first_line_number, pbNode.last_line_number, pbNode.object_pattern))            
+        graphs = pbTree(pylines, ['def', 'class'])
+        doc_blocks = graphs.block_list
+
+        list_lines = self._pbList_lines(doc_blocks)
+        tree_lines = self._pbTree_lines(graphs.root)
+
+        print(f"{'Line':<5} | {'Python source':<25} | {'Block list':<25} | {'Block tree':<25}")
+        print("-" * 89)
         for lno, line in enumerate(pylines):
-            dline = f"{lno:4g}: {line.strip()[0:20]:<20}| "
-            for s in scopelist:
-                fl,ll,pat = s
-                if(lno==fl):
-                    dline += pat + " ->" + str(ll)
-            print(dline) 
-            indent_str = ">" * pbNode.line_indent + "|"
+            src = line.rstrip()
+            block_info = list_lines[lno] if lno in list_lines else f"src: {src}"
+            tree_info = tree_lines[lno] if lno in tree_lines else f"src: {src}"
+            print(f"{lno+1:<5} | {src[:25]:<25} | {block_info[:25]:<25} | {tree_info[:25]:<25}")
 
-        tree = pbTree(doc_objects)
-        pbTree.print_pb(tree.root)
+    def _pbList_lines(self, doc_blocks):
+        output_lines = {}
+        for pbNode in doc_blocks:
+            output_lines[pbNode.first_line_number] = self._fString(pbNode)
+        return output_lines
 
+    def _pbTree_lines(self, pbNode, output_lines=None):
+        output_lines = {} if output_lines is None else output_lines
+        if pbNode.pattern:
+            output_lines[pbNode.first_line_number] =  self._fString(pbNode)
+        for twig in pbNode.twigs:
+            self._pbTree_lines(twig, output_lines)
 
+        return output_lines
+
+    def _fString(self, pbNode):
+        indent_str = ">" * pbNode.line_indent
+        return f"{indent_str} {pbNode.pattern} {pbNode.signature}"
 
 
 
@@ -137,5 +150,9 @@ class pbListAPI:
     def dummy2():
         a=1
 
+def main():
+    t = test("./pyparse.py")
 
-t = test("./pyparse.py")
+
+if __name__ == "__main__":
+    main()
