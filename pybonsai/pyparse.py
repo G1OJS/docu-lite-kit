@@ -25,6 +25,8 @@ class pbBlock:
         if(len(line.strip()) != 0):
             self.indent_spaces = len(line) - len(line.lstrip())
 
+    # may be much easier to mod this to search forwards from first line, return any docstring and then other content
+    # rather than fill in all the end line numbers globally as currently
     def get_content(self, doclines):
         return doclines[self.first_line_number:self.last_line_number+1]
         
