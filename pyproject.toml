@@ -6,7 +6,7 @@ license = "MIT"
 authors = [
   { name="G1OJS", email="g1ojs@yahoo.com" },
 ]
-description = "🧾 docu-lite: Ultra-light Zero-dependency HTML outline generator for Python."
+description = "🧾 pybonsai: Ultra-light Python code parser with optional cli and JSON output"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = []
@@ -38,7 +38,7 @@ Homepage = "https://github.com/G1OJS/pybonsai"
 Issues = "https://github.com/G1OJS/pybonsai/issues"
 
 [project.scripts]
-docu-lite = "pybonsai:demo"
+pybonsai-cli = "pybonsai.cli"
 
 [tool.setuptools]
 license-files = ["LICENSE"]
