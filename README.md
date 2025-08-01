@@ -7,6 +7,7 @@ The first component here is the ultra-light Python parser:
 - Soon to replace the parser used within docu-lite
 
 Current plans / ideas:
+- Add the 'pattern'/'include' options in the demo file as cli arguments
 - Add standalone / importable docu-lite-like html rendering components
 - Add standalone / importable API delta checkers
   
@@ -23,7 +24,7 @@ pip install docu-lite-kit
 ## 💡 Usage
 ### Command line:
 ```
-docu-lite-kit.cli [-h] [--out] [--noprint] input.py
+dlk.cli [-h] [--out] [--noprint] input.py
 ```
 -  -h = show help
 -  --out specifies the output file (JSON format)
@@ -31,28 +32,28 @@ docu-lite-kit.cli [-h] [--out] [--noprint] input.py
 
 ### Imported as a module:
 ```
-import pybonsai
+import dlk
 ```
 
 Provides the following three interfaces (see demo_minimal.py):
 ```
     input_file = r"./demo_minimal.py"
     # parse the doc looking for objects matching a,b,c,d:
-    # parser = pybonsai.pbIO(input_file, [ pattern_list =  [a,b,c,d] ])
+    # parser = dlk.dlkIO(input_file, [ pattern_list =  [a,b,c,d] ])
     # For the pattern list, docstring and body are implied & don't need to be mentioned.
     # The pattern list itself is optional and defaults to ['class', 'def']
-    parser = pybonsai.pbIO(input_file)
+    parser = dlk.dlkIO(input_file)
 
     # print out the result including the elements a,b,c,d:
-    # parser.pbPrint([a,b,c,d])
+    # parser.dlkPrint([a,b,c,d])
     # This time 'docstring' and 'body' do need to be explicitly mentioned if wanted in the printout
     # However pattern list is optional and defaults to ['class', 'def', 'docstring']
-    # parser.pbPrint( pattern_list = ['def', 'class', 'docstring', 'body'])
-    parser.pbPrint(['def', 'class', 'docstring', 'body'])
+    # parser.dlkPrint( pattern_list = ['def', 'class', 'docstring', 'body'])
+    parser.dlkPrint(['def', 'class', 'docstring', 'body'])
 
-    # Similar to pbPrint, this dumps the output to a JSON file:
-    # parser.pbDumpJSON(JSON_file = 'pybonsai.JSON', pattern_list = ['def', 'class', 'docstring'])
-    parser.pbDumpJSON()
+    # Similar to dlkPrint, this dumps the output to a JSON file:
+    # parser.dlkDumpJSON(self, JSON_file = 'dlk.json', pattern_list = ['def', 'class', 'docstring'])
+    parser.dlkDumpJSON()
 
 ```
 
