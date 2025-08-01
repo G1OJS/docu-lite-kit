@@ -1,8 +1,10 @@
-"""
-    Compiles a flat list of blocks of type 'class', 'def' and 'docstring'
-    Where class and def blocks include strings representing internal docstrincs and body content
-"""
+
 class pbBlock:
+    """
+        The building block object representing python definitions e.g. class, def.
+        Any docstring and body content is stored in the object's .docstring and .body fields
+        Most of the processing of python structures is done here
+    """
     def __init__(self, first_line_number, doclines, pattern_list):
         self.first_line_number = first_line_number
         self.pattern_list = pattern_list
@@ -10,7 +12,6 @@ class pbBlock:
         self.indent_spaces = len(self.first_line_text) - len(self.first_line_text.lstrip())
         self.indent_level = 0
         self.signature = ""
-        self.icon = ""
         self.docstring = ""
         self.body = ""
         # if no pattern on first line, exit early with self.pattern = False
@@ -60,22 +61,27 @@ class pbBlock:
         line_no = first_line_number + 1 if self.pattern !='docstring' else first_line_number
         while( line_no <= content_end):
             line  = doclines[line_no].replace("'''",'"""').strip()
-            if('"""' in line):
+            if(line.startswith('"""')):
                 if(docstring_start<0):
                     docstring_start = line_no
+                    line = line.replace('"""','',1)
                 else:
                     docstring_end = line_no
-            if('"""' in line.replace('"""','',1)):
+            if('"""' in line and docstring_start>=0):
                 docstring_end = line_no
             if(self._has_pattern(doclines[line_no])):
-                content_end = line_no -1
+                content_end = line_no
             line_no +=1
         if(docstring_start>=0):
             self.docstring = doclines[docstring_start:docstring_end + 1]
             content_start = docstring_end + 1
         self.body = doclines[content_start:content_end]
+      #  self.body = [f"{docstring_start} {docstring_end} {content_start} {content_end}"]
         
-class pbBlocks:
+class pbParse:
+    """
+        Processes the input document into a list of pbBlocks stored in the .blocks field
+    """
     def __init__(self, doclines, patterns):
         self.blocks = []
 
@@ -94,36 +100,32 @@ class pbBlocks:
                 indents.append(pbB.indent_spaces)
             pbB.indent_level = indents.index(pbB.indent_spaces)
 
-class pbPrint:
-    def __init__(self, blocks, pattern_list = ['def', 'class']):
-        for block in blocks:
+class pbIO:
+    """
+        Reads the input file, calls pbParse, and holds methods to output to screen and/or JSON
+    """
+    def __init__(self, input_file, pattern_list = ['def', 'class', 'docstring']):
+        with open(input_file) as f:
+            lines = f.readlines()
+            self.blocks = pbParse(lines, pattern_list).blocks
+
+    def pbPrint(self, pattern_list = ['def', 'class', 'docstring']):
+        print(f"This is an example printout of the object list created by pbParse\n\n")
+        for block in self.blocks:
             if(block.pattern not in pattern_list):
                 continue
-            print(f"{block.first_line_number+1}: {block.pattern} {block.signature}")
+            print(f"{block.first_line_number+1:4}: {block.pattern} {block.signature}")
             if('docstring' in pattern_list and block.docstring !=""):
                 for l in block.docstring:
-                    print(f"{l.replace('\n','')}")
+                    print(f"      ds:{l.replace('\n','')}")
             if('body' in pattern_list and block.body !=""):
                 for l in block.body:
-                    print(f"{l.replace('\n','')}")
-
-import json
-
-def main():
-    input_file = r"C:\Users\drala\Documents\Projects\GitHub\NECBOL\necbol\modeller.py"
-    output_json_file = "parsed_blocks.json"
-
-    with open(input_file) as f:
-        lines = f.readlines()
-
-    blocks = pbBlocks(lines, ['def', 'class']).blocks
-    pbPrint(blocks, ['def', 'class', 'docstring'])
-
-    block_dicts = [b.to_dict() for b in blocks]
+                    print(f"       b:{l.replace('\n','')}")
     
-    with open(output_json_file, 'w') as f:
-        json.dump(block_dicts, f, indent=2)
+    def pbDumpJSON(self, JSON_file = 'pybonsai.JSON', pattern_list = ['def', 'class', 'docstring']):
+        import json
+        block_dicts = [b.to_dict() for b in self.blocks]
+        with open(JSON_file, 'w') as f:
+            json.dump(block_dicts, f, indent=2)
 
-            
-if __name__ == "__main__":
-    main()
+
