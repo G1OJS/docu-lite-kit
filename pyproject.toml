@@ -1,12 +1,12 @@
 [project]
 name = "docu-lite-kit"
-version = "0.1.0"
+version = "0.2.0"
 license = "MIT"
 
 authors = [
   { name="G1OJS", email="g1ojs@yahoo.com" },
 ]
-description = "🧾 pybonsai: Ultra-light Python code parser with optional cli and JSON output"
+description = "🧾 docu-lite-kit: Ultra-light cli/importable Python code parser tools"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = []
