@@ -1,7 +1,7 @@
 """
     Standard Python initialiser handling imports from modules and version number
 """
-from .pyparse import *
+from .pyparse_flat import *
 
 from importlib.metadata import version
 try:

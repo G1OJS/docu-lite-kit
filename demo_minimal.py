@@ -34,10 +34,12 @@ def func_five():
 
 import pybonsai
 def main():
-    """
-        docstring for main
-    """
-    t = pybonsai.test("./demo_minimal.py")
+    input_file = r"./demo_minimal.py"
+    with open(input_file) as f:
+        lines = f.readlines()
+    blocks = pybonsai.pbBlocks(lines, ['def', 'class']).blocks
+    pybonsai.pbPrint(blocks, ['def', 'class', 'docstring'])
+#    pybonsai.pbPrint(blocks, ['def', 'class', 'body'])
 
 if __name__ == "__main__":
     main()
