@@ -1,6 +1,6 @@
 [project]
 name = "docu-lite-kit"
-version = "0.0.1"
+version = "0.1.0"
 license = "MIT"
 
 authors = [
@@ -38,7 +38,7 @@ Homepage = "https://github.com/G1OJS/docu-lite-kit"
 Issues = "https://github.com/G1OJS/docu-lite-kit/issues"
 
 [project.scripts]
-dlk-cli = "dlk.cli"
+dlk-cli = "dlk.cli:main"
 
 [tool.setuptools]
 packages = ["dlk"]
