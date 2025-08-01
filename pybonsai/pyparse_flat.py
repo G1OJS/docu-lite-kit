@@ -1,10 +1,10 @@
 """
-    Pyparse
-    Works well but misses file-level docstring
+    Compiles a flat list of blocks of type 'class', 'def' and 'docstring'
+    Where class and def blocks include strings representing internal docstrincs and body content
 """
-
 class pbBlock:
     def __init__(self, first_line_number, doclines, pattern_list):
+        self.first_line_number = first_line_number
         self.pattern_list = pattern_list
         self.first_line_text = doclines[first_line_number]
         self.indent_spaces = len(self.first_line_text) - len(self.first_line_text.lstrip())
@@ -14,9 +14,12 @@ class pbBlock:
         self.docstring = ""
         self.body = ""
         # if no pattern on first line, exit early with self.pattern = False
-        self.pattern = self._has_pattern(self.first_line_text)
-        if(self.pattern == False):
-            return
+        if(pattern_list != 'docstring'):
+            self.pattern = self._has_pattern(self.first_line_text)
+            if(self.pattern == False):
+                return
+        else:
+            self.pattern = 'docstring'
 
         self._fill_signature(doclines, first_line_number)
         self._fill_content(doclines, first_line_number)
@@ -44,7 +47,7 @@ class pbBlock:
         content_end = len(doclines)-1
         docstring_start = -1
         docstring_end = -1
-        line_no = first_line_number + 1
+        line_no = first_line_number + 1 if self.pattern !='docstring' else first_line_number
         while( line_no <= content_end):
             line  = doclines[line_no].replace("'''",'"""').strip()
             if(line.startswith('"""')):
@@ -70,9 +73,10 @@ class pbBlocks:
         for line_no, line in enumerate(doclines):
             block = pbBlock(line_no, doclines, patterns)
             if(block.pattern):
-                self.blocks.append(block)
-                print(f"{line_no} {block.first_line_text}")
-
+                self.blocks.append(block)                
+            elif len(self.blocks) == 0 and '"""' in line.replace("'''",'"""'):
+                self.blocks.append(pbBlock(line_no, doclines, 'docstring'))
+                
         # tell each object what its indent level is within the document
         indents =[0]
         for pbB in self.blocks:
@@ -80,53 +84,18 @@ class pbBlocks:
                 indents.append(pbB.indent_spaces)
             pbB.indent_level = indents.index(pbB.indent_spaces)
 
-class pbBrowser:
-    """
-        Generates HTML for expandable node list representing the document tree
-    """
-    def __init__(self, blocks):
-        style_sheet_file = "docu-lite-style.css"
-        self.html =  f"<!DOCTYPE html><html lang='en'>\n<head>\n<title></title>"
-        self.html += f"<link rel='stylesheet' href='./{style_sheet_file}' />"
-        prev_indent = 0
-        count = 0
-        for pbB in blocks:
-            self.html += self._signature_html(pbB.pattern, pbB.signature, True)
-            if(pbB.docstring != ""):
-                self.html += self._content_html('docstring', pbB.docstring)   
-            self.html += self._content_html(pbB.pattern, pbB.body)
-            self.html += self._close_details(pbB.indent_level-prev_indent+1 )
-            prev_indent = pbB.indent_level
-            count +=1
-        soft_string = ''
-        self.html += f"\n<br><br><span style = 'font-size:0.8em;color:#666;border-top:1px solid #ddd; "
-        self.html += f"font-style:italic'>Made with {soft_string}</span></body>\n"
-
-    
-    def _signature_html(self, obj_type, obj_signature, open_details = True):
-        htm = "<details><summary>" if open_details else "<div>"
-        htm += f"<span class ='{obj_type} {'signature'}'>{obj_signature}</span>"
-        htm += "</summary>" if open_details else "</div>"
-        return htm + "\n"
-
-    def _content_html(self, object_type, content_lines):
-        import html
-        htm = f"<pre class ='{object_type} content'>"
-        for i, line in enumerate(content_lines):
-            if(i==0 and len(line.strip()) ==0):
-                continue
-            htm += f"{html.escape(line)}"
-        htm += "</pre>\n"
-        return htm
-
-    def _close_details(self, n_times):
-        if(n_times <1):
-            return ""
-        return "</details>\n" * n_times
-
-    def _format_docstring(self, docstring_lines):
-        lines = [line.rstrip().replace(docstring_delimeter, '') for line in docstring_lines]
-
+class pbPrint:
+    def __init__(self, blocks, pattern_list = ['def', 'class']):
+        for block in blocks:
+            if(block.pattern not in pattern_list):
+                break
+            print(f"{block.first_line_number}: {block.pattern}{block.signature}")
+            if('docstring' in pattern_list and block.docstring !=""):
+                for l in block.docstring:
+                    print(f"{l.replace('\n','')}")
+            if('body' in pattern_list and block.body !=""):
+                for l in block.body:
+                    print(f"{l.replace('\n','')}")
 
 def main():
     input_file = r"C:\Users\drala\Documents\Projects\GitHub\NECBOL\necbol\modeller.py"
@@ -135,10 +104,7 @@ def main():
     with open(input_file) as f:
         lines = f.readlines()
     blocks = pbBlocks(lines, ['def', 'class']).blocks
-    
-    htm = pbBrowser(blocks).html
-    with open(output_html_file, "w", encoding="utf-8") as f:
-        f.write(htm)
+    pbPrint(blocks, ['def', 'class', 'docstring'])
             
 if __name__ == "__main__":
     main()
