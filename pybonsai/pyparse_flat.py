@@ -134,7 +134,7 @@ def main():
 
     with open(input_file) as f:
         lines = f.readlines()
-    blocks = pbBlocks(lines, ['def', 'class', 'docstring']).blocks
+    blocks = pbBlocks(lines, ['def', 'class']).blocks
     
     htm = pbBrowser(blocks).html
     with open(output_html_file, "w", encoding="utf-8") as f:
