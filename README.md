@@ -1,26 +1,29 @@
-# pybonsai
-Tiny dependency-free Python parser returning a tree-like representation of code objects.
+# Docu-lite-kit
+Standalone cli/importable components inspired by [docu-lite](https://pypi.org/project/docu-lite/)
 
-- Based on the parser in [docu-lite](https://pypi.org/project/docu-lite/)
+The first component here is the ultra-light Python parser:
 - Rewritten to be more robust around docstrings
 - Packaged to be useable from the command line or imported as a module into other code
+- Soon to replace the parser used within docu-lite
+
+Current plans / ideas:
+- Add standalone / importable docu-lite-like html rendering components
+- Add standalone / importable API delta checkers
   
 ## Screenshots
 <img width="1855" height="988" alt="Capture" src="https://github.com/user-attachments/assets/5a4561c4-08dd-4be8-b6a5-efaaac491a88" />
-
-
 
 ## 🛠 Installation
 
 Install using pip: open a command window and type
 
 ```
-pip install pybonsai
+pip install docu-lite-kit
 ```
 ## 💡 Usage
 ### Command line:
 ```
-pybonsai.cli [-h] [--out] [--noprint] input.py
+docu-lite-kit.cli [-h] [--out] [--noprint] input.py
 ```
 -  -h = show help
 -  --out specifies the output file (JSON format)
