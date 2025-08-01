@@ -21,6 +21,7 @@ pip install pybonsai
 pybonsai.cli [--out] [--json] input.py
 ```
 --out specifies the output file (console / screen if omitted)
+
 --json means output in JSON format
 
 ### Imported as a module:
