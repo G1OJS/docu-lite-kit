@@ -41,6 +41,7 @@ Issues = "https://github.com/G1OJS/pybonsai/issues"
 pybonsai-cli = "pybonsai.cli"
 
 [tool.setuptools]
+packages = ["pybonsai"]
 license-files = ["LICENSE"]
 
 
