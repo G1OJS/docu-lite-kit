@@ -11,8 +11,9 @@ Current plans / ideas:
 - Add standalone / importable docu-lite-like html rendering components
 - Add standalone / importable API delta checkers
   
-## Screenshots
-<img width="1855" height="988" alt="Capture" src="https://github.com/user-attachments/assets/5a4561c4-08dd-4be8-b6a5-efaaac491a88" />
+## Screenshot
+<img width="1296" height="589" alt="Capture" src="https://github.com/user-attachments/assets/d446b89a-4313-4599-9e97-a015ffe505e6" />
+
 
 ## 🛠 Installation
 
