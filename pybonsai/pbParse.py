@@ -117,10 +117,10 @@ class pbIO:
             print(f"{block.first_line_number+1:4}: {block.pattern} {block.signature}")
             if('docstring' in pattern_list and block.docstring !=""):
                 for l in block.docstring:
-                    print(f"      ds:{l.replace('\n','')}")
+                    print(f"    docs:{l.replace('\n','')}")
             if('body' in pattern_list and block.body !=""):
                 for l in block.body:
-                    print(f"       b:{l.replace('\n','')}")
+                    print(f"    body:{l.replace('\n','')}")
     
     def pbDumpJSON(self, JSON_file = 'pybonsai.JSON', pattern_list = ['def', 'class', 'docstring']):
         import json

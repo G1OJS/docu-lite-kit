@@ -7,7 +7,7 @@
     "docstring": [
       "\"\"\"",
       "    Everything in this demo file is 'dummy code' for the parser to parse,",
-      "    from the top down to main()",
+      "    except the section indicated at the bottom",
       "\"\"\""
     ],
     "body": []
