@@ -6,6 +6,8 @@ Tiny dependency-free Python parser returning a tree-like representation of code 
 - Packaged to be useable from the command line or imported as a module into other code
   
 ## Screenshots
+<img width="1855" height="988" alt="Capture" src="https://github.com/user-attachments/assets/5a4561c4-08dd-4be8-b6a5-efaaac491a88" />
+
 
 
 ## 🛠 Installation
