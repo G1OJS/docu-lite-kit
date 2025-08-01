@@ -56,4 +56,4 @@ Provides the following three interfaces (see demo_minimal.py):
 
 ```
 
-[PyPI link](https://pypi.org/project/pybonsai/)
+[PyPI link](https://pypi.org/project/docu-lite-kit/)
