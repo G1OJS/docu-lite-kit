@@ -1,13 +1,13 @@
 """
     Standard Python initialiser handling imports from modules and version number
 """
-from .pbParse import *
+from .dlkParse import *
 
 from importlib.metadata import version
 try:
-    __version__ = version("pybonsai")
+    __version__ = version("docu-lite-kit")
 except:
     __version__ = ""
-print(f"\npybonsai {__version__} by Dr Alan Robinson G1OJS\n\n")
+print(f"\ndocu-lite-kit {__version__} by Dr Alan Robinson G1OJS\n\n")
 
 

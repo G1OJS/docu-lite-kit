@@ -34,7 +34,7 @@ def func_five():
         here's the end line """
 
 # Here's the actual code that runs:
-import pybonsai
+import dlk
 if __name__ == "__main__":
     
     input_file = r"./demo_minimal.py"
@@ -42,17 +42,17 @@ if __name__ == "__main__":
     # parser = pybonsai.pbIO(input_file, [ pattern_list =  [a,b,c,d] ])
     # For the pattern list, docstring and body are implied & don't need to be mentioned.
     # The pattern list itself is optional and defaults to ['class', 'def']
-    parser = pybonsai.pbIO(input_file)
+    parser = dlk.dlkIO(input_file)
 
     # print out the result including the elements a,b,c,d:
     # parser.pbPrint([a,b,c,d])
     # This time 'docstring' and 'body' do need to be explicitly mentioned if wanted in the printout
     # However pattern list is optional and defaults to ['class', 'def', 'docstring']
     # parser.pbPrint( pattern_list = ['def', 'class', 'docstring', 'body'])
-    parser.pbPrint(['def', 'class', 'docstring', 'body'])
+    parser.dlkPrint(['def', 'class', 'docstring', 'body'])
 
     # Similar to pbPrint, this dumps the output to a JSON file:
     # parser.pbDumpJSON(JSON_file = 'pybonsai.JSON', pattern_list = ['def', 'class', 'docstring'])
-    parser.pbDumpJSON()
+    parser.dlkDumpJSON()
     
 

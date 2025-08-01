@@ -1,5 +1,5 @@
 
-class pbBlock:
+class dlkBlock:
     """
         The building block object representing python definitions e.g. class, def.
         Any docstring and body content is stored in the object's .docstring and .body fields
@@ -78,39 +78,39 @@ class pbBlock:
         self.body = doclines[content_start:content_end]
       #  self.body = [f"{docstring_start} {docstring_end} {content_start} {content_end}"]
         
-class pbParse:
+class dlkParse:
     """
-        Processes the input document into a list of pbBlocks stored in the .blocks field
+        Processes the input document into a list of dlkBlocks stored in the .blocks field
     """
     def __init__(self, doclines, patterns):
         self.blocks = []
 
         # get all blocks in a flat list
         for line_no, line in enumerate(doclines):
-            block = pbBlock(line_no, doclines, patterns)
+            block = dlkBlock(line_no, doclines, patterns)
             if(block.pattern):
                 self.blocks.append(block)                
             elif len(self.blocks) == 0 and '"""' in line.replace("'''",'"""'):
-                self.blocks.append(pbBlock(line_no, doclines, 'docstring'))
+                self.blocks.append(dlkBlock(line_no, doclines, 'docstring'))
                 
         # tell each object what its indent level is within the document
         indents =[0]
-        for pbB in self.blocks:
-            if(pbB.indent_spaces > indents[-1]):
-                indents.append(pbB.indent_spaces)
-            pbB.indent_level = indents.index(pbB.indent_spaces)
+        for dlkB in self.blocks:
+            if(dlkB.indent_spaces > indents[-1]):
+                indents.append(dlkB.indent_spaces)
+            dlkB.indent_level = indents.index(dlkB.indent_spaces)
 
-class pbIO:
+class dlkIO:
     """
-        Reads the input file, calls pbParse, and holds methods to output to screen and/or JSON
+        Reads the input file, calls dlkParse, and holds methods to output to screen and/or JSON
     """
     def __init__(self, input_file, pattern_list = ['def', 'class', 'docstring']):
         with open(input_file) as f:
             lines = f.readlines()
-            self.blocks = pbParse(lines, pattern_list).blocks
+            self.blocks = dlkParse(lines, pattern_list).blocks
 
-    def pbPrint(self, pattern_list = ['def', 'class', 'docstring']):
-        print(f"This is an example printout of the object list created by pbParse\n\n")
+    def dlkPrint(self, pattern_list = ['def', 'class', 'docstring']):
+        print(f"This is an example printout of the object list created by dlkParse\n\n")
         for block in self.blocks:
             if(block.pattern not in pattern_list):
                 continue
@@ -122,7 +122,7 @@ class pbIO:
                 for l in block.body:
                     print(f"    body:{l.replace('\n','')}")
     
-    def pbDumpJSON(self, JSON_file = 'pybonsai.JSON', pattern_list = ['def', 'class', 'docstring']):
+    def dlkDumpJSON(self, JSON_file = 'dlk.json', pattern_list = ['def', 'class', 'docstring']):
         import json
         block_dicts = [b.to_dict() for b in self.blocks]
         with open(JSON_file, 'w') as f:

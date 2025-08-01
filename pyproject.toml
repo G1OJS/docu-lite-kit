@@ -1,5 +1,5 @@
 [project]
-name = "pybonsai"
+name = "docu-lite-kit"
 version = "0.0.1"
 license = "MIT"
 
@@ -34,14 +34,14 @@ keywords = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/G1OJS/pybonsai"
-Issues = "https://github.com/G1OJS/pybonsai/issues"
+Homepage = "https://github.com/G1OJS/docu-lite-kit"
+Issues = "https://github.com/G1OJS/docu-lite-kit/issues"
 
 [project.scripts]
-pybonsai-cli = "pybonsai.cli"
+dlk-cli = "dlk.cli"
 
 [tool.setuptools]
-packages = ["pybonsai"]
+packages = ["dlk"]
 license-files = ["LICENSE"]
 
 

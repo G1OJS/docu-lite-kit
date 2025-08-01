@@ -1,6 +1,6 @@
 
 import argparse
-from .pbParse import *
+from .dlkParse import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("infile")
@@ -9,9 +9,9 @@ parser.add_argument("--noprint", action = 'store_true', help = "Don't print outp
 args = parser.parse_args()
 
 if(args.infile):
-    pb = pbIO(args.infile)
+    dlk = dlkIO(args.infile)
     if(not args.noprint):
-        pb.pbPrint()
+        dlk.dlkPrint()
     if(args.out):
-        pb.pbDumpJSON(args.out) 
+        dlk.dlkDumpJSON(args.out) 
 
