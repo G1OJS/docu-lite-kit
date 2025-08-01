@@ -18,11 +18,11 @@ pip install pybonsai
 ## 💡 Usage
 ### Command line:
 ```
-pybonsai.cli [--out] [--json] input.py
+pybonsai.cli [-h] [--out] [--noprint] input.py
 ```
---out specifies the output file (console / screen if omitted)
-
---json means output in JSON format
+-  -h = show help
+-  --out specifies the output file (JSON format)
+-  --noprint = don't print the basic printout to the console 
 
 ### Imported as a module:
 ```
