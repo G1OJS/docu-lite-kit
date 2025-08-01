@@ -7,6 +7,7 @@ The first component here is the ultra-light Python parser:
 - Soon to replace the parser used within docu-lite
 
 Current plans / ideas:
+- Add the 'pattern'/'include' options in the demo file as cli arguments
 - Add standalone / importable docu-lite-like html rendering components
 - Add standalone / importable API delta checkers
   
