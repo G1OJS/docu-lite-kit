@@ -1,537 +1,7 @@
 <!DOCTYPE html><html lang='en'>
 <head>
-<title></title><link rel='stylesheet' href='./docu-lite-style.css' /><details><summary><span class ='class signature'></span></summary>
-<pre class ='docstring content'>        &quot;&quot;&quot;
-            Set the name of the model. This is used in NEC input file generation and is reflected in the NEC
-            output file name. It is permissible to use this function to re-set the name after a NEC run has completed,
-            so that the analysis continues (with updated input parameters) and outputs more than one test case
-        &quot;&quot;&quot;
-</pre>
-<pre class ='class content'>        self.model_name = name
-        self.nec_in = self.working_dir + &quot;\\&quot; + self.model_name +  &quot;.nec&quot;
-        self.nec_out = self.working_dir + &quot;\\&quot; + self.model_name +  &quot;.out&quot;
-        self._write_runner_files()
-
-    def set_wire_conductivity(self, sigma):
-        &quot;&quot;&quot;
-            Set wire conductivity to be assumed for all wires that don&#x27;t have an explicitly-set load.
-        &quot;&quot;&quot;
-        self.default_wire_sigma = sigma
-        self.LOADS.append({&#x27;iTag&#x27;: 0, &#x27;load_type&#x27;: &#x27;conductivity&#x27;, &#x27;RoLuCp&#x27;: (sigma, 0, 0), &#x27;alpha&#x27;: None})
-  
-    def set_frequency(self, MHz):
-        &quot;&quot;&quot;
-            Request NEC to perform all analysis at the specified frequency. 
-        &quot;&quot;&quot;
-        self.MHz = MHz
-        lambda_m = 300/MHz
-        self.segLength_m = lambda_m / self.nSegs_per_wavelength
-
-    def set_gain_point(self, azimuth_deg, elevation_deg):
-        &quot;&quot;&quot;
-            Set the azimuth and elevation of a single gain point that
-            must appear in the output radiation pattern
-        &quot;&quot;&quot;
-        self.az_datum_deg = azimuth_deg
-        self.el_datum_deg = elevation_deg
-
-
-    def set_angular_resolution(self, az_step_deg, el_step_deg):
-        &quot;&quot;&quot;
-            Set resolution required in az and el in degrees
-            If a ground is specified, NEC will be asked for a hemisphere, otherwise a sphere
-        &quot;&quot;&quot;
-        self.az_step_deg = az_step_deg
-        self.el_step_deg = el_step_deg
-
-    def set_ground(self, eps_r, sigma, **origin_height):
-        &quot;&quot;&quot;
-            Sets the ground relative permitivity and conductivity. Currently limited to simple choices.
-            If eps_r = 1, nec is told to use no ground (free space model), and you may omit the origin height parameter
-            If you don&#x27;t call this function, free space will be assumed.
-            Othewise you should set the origin height so that the antenna reference point X,Y,Z = (0,0,0) is set to be
-            the specified distance above ground.
-            Parameters:
-                eps_r (float): relative permittivity (relative dielectric constant) of the ground
-                sigma (float): conductivity of the ground in mhos/meter
-                origin_height_{units_string} (float): Height of antenna reference point X,Y,Z = (0,0,0)
-        &quot;&quot;&quot;
-        self.ground_Er = eps_r
-        self.ground_sigma = sigma
-        if(eps_r &gt;1.0):
-            self.origin_height_m = self._units._from_suffixed_dimensions(origin_height)[&#x27;origin_height_m&#x27;]
-            if(self.el_datum_deg &lt;= 0):
-                self.el_datum_deg = 1
-
-    def place_RLC_load(self, geomObj, R_Ohms, L_uH, C_pf, load_type = &#x27;series&#x27;, load_alpha_object=-1, load_wire_index=-1, load_alpha_wire=-1):
-        &quot;&quot;&quot;
-            inserts a single segment containing an RLC load into an existing geometry object
-            Position within the object is specied as
-            EITHER:
-              load_alpha_object (range 0 to 1) as a parameter specifying the length of
-                                wire traversed to reach the item by following each wire in the object,
-                                divided by the length of all wires in the object
-                                (This is intended to be used for objects like circular loops where there
-                                are many short wires each of the same length)
-            OR:
-              load_wire_index AND load_alpha_wire
-              which specify the i&#x27;th wire (0 to n-1) in the n wires in the object, and the distance along that
-              wire divided by that wire&#x27;s length
-
-            NEC LD card specification: https://www.nec2.org/part_3/cards/ld.html
-        &quot;&quot;&quot;
-
-        iTag = self.LOADS_start_tag + len(self.LOADS)
-        self.LOADS.append({&#x27;iTag&#x27;: iTag, &#x27;load_type&#x27;: load_type, &#x27;RoLuCp&#x27;: (R_Ohms, L_uH, C_pf), &#x27;alpha&#x27;: None})
-        self._insert_special_segment(geomObj, iTag, load_alpha_object, load_wire_index, load_alpha_wire)
-
-    def place_feed(self,  geomObj, feed_alpha_object=-1, feed_wire_index=-1, feed_alpha_wire=-1):
-        &quot;&quot;&quot;
-            Inserts a single segment containing the excitation point into an existing geometry object.
-            Position within the object is specied as
-            EITHER:
-              feed_alpha_object (range 0 to 1) as a parameter specifying the length of
-                                wire traversed to reach the item by following each wire in the object,
-                                divided by the length of all wires in the object
-                                (This is intended to be used for objects like circular loops where there
-                                are many short wires each of the same length)
-            OR:
-              feed_wire_index AND feed_alpha_wire
-              which specify the i&#x27;th wire (0 to n-1) in the n wires in the object, and the distance along that
-              wire divided by that wire&#x27;s length
-        &quot;&quot;&quot;
-        self._insert_special_segment(geomObj, self.EX_tag, feed_alpha_object, feed_wire_index, feed_alpha_wire)
-   
-    def add(self, geomObj, wireframe_color = &#x27;darkgoldenrod&#x27;):
-        &quot;&quot;&quot;
-            Add a completed component to the specified model: model_name.add(component_name). Any changes made
-            to the component after this point are ignored.
-        &quot;&quot;&quot;
-        geomObj.wireframe_color = wireframe_color
-        self.tags_info.append({&#x27;base_tag&#x27;:geomObj.base_tag,&#x27;wf_col&#x27;:geomObj.wireframe_color})
-        self.geometry.append(geomObj)
-
-    def write_nec(self):
-        &quot;&quot;&quot;
-            Write the entire model to the NEC input file ready for analysis. At this point, the function
-            &quot;show_wires_from_file&quot; may be used to see the specified geometry in a 3D view.
-        &quot;&quot;&quot;
-        print(&quot;Writing NEC input file&quot;)
-        self._write_runner_files()
-        
-        # open the .nec file
-        with open(self.nec_in, &quot;w&quot;) as f:
-            f.write(&quot;CM\nCE\n&quot;)
-            
-            # Write GW lines for all geometry
-            for geomObj in self.geometry:
-                for w in geomObj._get_wires():
-                    #print(f&quot;Write wire with tag {w[&#x27;iTag&#x27;]}&quot;)
-                    A = np.array(w[&quot;a&quot;], dtype=float)
-                    B = np.array(w[&quot;b&quot;], dtype=float)
-                    if(w[&#x27;nS&#x27;] == 0): # calculate and update number of segments only if not already present
-                        w[&#x27;nS&#x27;] = 1+int(np.linalg.norm(B-A) / self.segLength_m)
-                    f.write(f&quot;GW {w[&#x27;iTag&#x27;]} {w[&#x27;nS&#x27;]} &quot;)
-                    f.write(&#x27; &#x27;.join([f&quot;{A[i]:.3f} &quot; for i in range(3)]))
-                    f.write(&#x27; &#x27;.join([f&quot;{B[i]:.3f} &quot; for i in range(3)]))
-                    f.write(f&quot; {w[&#x27;wr&#x27;]}\n&quot;)
-
-            # Write GE card, Ground Card, and GM card to set origin height
-            if self.ground_Er == 1.0:
-                f.write(&quot;GE 0\n&quot;)
-            else:
-                f.write(f&quot;GM 0 0 0 0 0 0 0 {self.origin_height_m:.3f}\n&quot;)
-                f.write(&quot;GE -1\n&quot;)
-                f.write(f&quot;GN 2 0 0 0 {self.ground_Er:.3f} {self.ground_sigma:.3f} \n&quot;)
-            
-            # Write EK card
-            f.write(&quot;EK\n&quot;)
-
-            # Write out the loads
-            for LD in self.LOADS:
-                LDTYP = [&#x27;series&#x27;,&#x27;parallel&#x27;,&#x27;series_per_metre&#x27;,&#x27;parallel_per_metre&#x27;,&#x27;impedance_not_used&#x27;,&#x27;conductivity&#x27;].index(LD[&#x27;load_type&#x27;])
-                LDTAG = LD[&#x27;iTag&#x27;]
-                R_Ohms, L_uH , C_pF = LD[&#x27;RoLuCp&#x27;]
-                # these strings are set programatically so shouldn&#x27;t need an error trap
-                f.write(f&quot;LD {LDTYP} {LDTAG} 0 0 {R_Ohms:8.4e} {L_uH * 1e-6:8.4e} {C_pF * 1e-12:8.4e}\n&quot;)
-
-            # Feed
-            f.write(f&quot;EX 0 {self.EX_tag} 1 0 1 0\n&quot;)
-
-            # Frequency
-            # update to include sweep
-            f.write(f&quot;FR 0 1 0 0 {self.MHz:.3f} 0\n&quot;)
-
-            # Pattern points
-            n_phi = 1 + int(360 / self.az_step_deg)
-            d_phi = 360 / (n_phi - 1)
-            phi_start_deg = self.az_datum_deg
-            if self.ground_Er == 1.0:  # free space, no ground card, full sphere is appropriate
-                theta_start_deg, d_theta, n_theta = self._set_theta_grid_from_el_datum(self.el_datum_deg, self.el_step_deg, hemisphere = False)
-                f.write(f&quot;RP 0 {n_theta} {n_phi} 1003 {theta_start_deg} {phi_start_deg} {d_theta} {d_phi}\n&quot;)
-            else:                       # ground exists, upper hemisphere is appropriate
-                theta_start_deg, d_theta, n_theta = self._set_theta_grid_from_el_datum(self.el_datum_deg, self.el_step_deg, hemisphere = True)
-                f.write(f&quot;RP 0 {n_theta} {n_phi} 1003 {theta_start_deg} {phi_start_deg} {d_theta} {d_phi}\n&quot;)
-                
-            f.write(&quot;EN&quot;)
-
-    def run_nec(self):
-        &quot;&quot;&quot;
-        Pass the model file to NEC for analysis and wait for the output.
-        &quot;&quot;&quot;
-        try:
-            os.remove(self.nec_out)
-        except FileNotFoundError:
-            pass
-
-        print(&quot;Running NEC&quot;)
-        subprocess.Popen([self.nec_bat], creationflags=subprocess.CREATE_NO_WINDOW)
-
-        factored = False
-        pattern_started = False
-        st = time.time()
-
-        while True:
-            try:
-                with open(self.nec_out, &quot;r&quot;) as f:
-                    lines = f.readlines()
-                    for line in lines:
-                        if &quot;FACTOR=&quot; in line and not factored:
-                            factored = True
-                            print(&quot;Matrix factored&quot;)
-                        if &quot;RADIATION&quot; in line and not pattern_started:
-                            pattern_started = True
-                            print(&quot;Calculating pattern&quot;)
-                        if &quot;ERROR&quot; in line:
-                            raise Exception(f&quot;NEC Error: {line.strip()}&quot;)
-                        if &quot;RUN&quot; in line:
-                            print(&quot;NEC run completed&quot;)
-                            return  # success
-            except FileNotFoundError:
-                pass  # Output not yet created
-                if time.time() - st &gt; 10:
-                    raise Exception(&quot;Timeout waiting for NEC to start&quot;)
-
-            time.sleep(0.5)
-
-
-#===============================================================
-# internal functions for class NECModel
-#===============================================================
-
-    def _set_frequency_sweep(self, MHz, MHz_stop, MHz_step):
-        &quot;&quot;&quot;
-            Set parameters for frequency sweep. This also sets the angular pattern resolution
-            to 10 degrees in azimuth and elevation to limit the size of output files           
-        &quot;&quot;&quot;
-        self.MHz_stop = MHz_stop
-        self.MHz_step = MHz_step
-        self.MHz = MHz
-        lambda_m = 300/MHz_stop
-        self.segLength_m = lambda_m / self.nSegs_per_wavelength
-        self.set_angular_resolution(10,10)
-
-
-    def _set_theta_grid_from_el_datum(self, el_datum_deg, el_step_deg, hemisphere = True):
-        theta_datum = 90 - el_datum_deg
-        d_theta = el_step_deg
-        theta_range = 90 if hemisphere else 180
-
-        theta_start = theta_datum % d_theta
-        # Fix float errors (e.g. 0.0000001)
-        theta_start = round(theta_start, 6)
-
-        # Clip to max range
-        max_theta = theta_start + d_theta * (int((theta_range - theta_start) / d_theta))
-        n_theta = 1 + int((max_theta - theta_start) / d_theta)
-        return theta_start, d_theta, n_theta
-
-    def _write_runner_files(self):
-        &quot;&quot;&quot;
-            Write the .bat file to start NEC, and &#x27;files.txt&#x27; to tell NEC the name of the input and output files
-        &quot;&quot;&quot;
-        for filepath, content in [
-            (self.nec_bat, f&quot;{self.nec_exe} &lt; {self.files_txt} \n&quot;),
-            (self.files_txt, f&quot;{self.nec_in}\n{self.nec_out}\n&quot;)
-        ]:
-            directory = os.path.dirname(filepath)
-            if directory and not os.path.exists(directory):
-                os.makedirs(directory)  # create directory if it doesn&#x27;t exist
-            try:
-                with open(filepath, &quot;w&quot;) as f:
-                    f.write(content)
-            except Exception as e:
-                print(f&quot;Error writing file {filepath}: {e}&quot;)
-
-    def _insert_special_segment(self, geomObj, item_iTag, item_alpha_object, item_wire_index, item_alpha_wire):
-        &quot;&quot;&quot;
-            inserts a single segment with a specified iTag into an existing geometry object
-            position within the object is specied as either item_alpha_object or item_wire_index, item_alpha_wire
-            (see calling functions for more details)
-        &quot;&quot;&quot;
-        wires = geomObj._get_wires()
-        if(item_alpha_object &gt;=0):
-            item_wire_index = min(len(wires)-1,int(item_alpha_object*len(wires))) # 0 to nWires -1
-            item_alpha_wire = item_alpha_object - item_wire_index
-        w = wires[item_wire_index]       
-
-        # calculate wire length vector AB, length a to b and distance from a to feed point
-        A = np.array(w[&quot;a&quot;], dtype=float)
-        B = np.array(w[&quot;b&quot;], dtype=float)
-        AB = B-A
-        wLen = np.linalg.norm(AB)
-        feedDist = wLen * item_alpha_wire
-
-        if (wLen &lt;= self.segLength_m):
-            # feed segment is all of this wire, so no need to split
-            # print(f&quot;Change wire itag from {w[&#x27;iTag&#x27;]} to {item_iTag}&quot;)
-            w[&#x27;nS&#x27;] = 1
-            w[&#x27;iTag&#x27;] = item_iTag
-        else:
-            # split the wire AB into three wires: A to C, CD (feed segment), D to B
-            nS1 = int(feedDist / self.segLength_m)              # no need for min of 1 as we always have the feed segment
-            C = A + AB * (nS1 * self.segLength_m) / wLen        # feed segment end a
-            D = A + AB * ((nS1+1) * self.segLength_m) / wLen    # feed segment end b
-            nS2 = int((wLen-feedDist) / self.segLength_m)       # no need for min of 1 as we always have the feed segment
-            # write results back to geomObj: modify existing wire to end at C, add feed segment CD and final wire DB
-            # (nonzero nS field is preserved during segmentation in &#x27;add&#x27;)
-            w[&#x27;b&#x27;] = tuple(C)
-            w[&#x27;nS&#x27;] = nS1
-            geomObj._add_wire(item_iTag , 1, *C, *D, w[&quot;wr&quot;])
-            geomObj._add_wire(w[&quot;iTag&quot;] , nS2, *D, *B, w[&quot;wr&quot;])
-            
-
-#=================================================================================
-# The geometry object that holds a single component plus its methods
-#=================================================================================
-
-class GeometryObject:
-    def __init__(self, wires):
-        self.wires = wires  # list of wire dicts with iTag, nS, x1, y1, ...
-        self._units = _units()
-        self.wireframe_color = None
-
-    def translate(self, **params):
-        &quot;&quot;&quot;
-            Translate an object by dx, dy, dz
-            Arguments are dx_{units}, dy_{units}, dz_{units}
-        &quot;&quot;&quot;
-        params_m = self._units._from_suffixed_dimensions(params)
-        for w in self.wires:
-            w[&#x27;a&#x27;] = tuple(map(float,np.array(w[&#x27;a&#x27;]) + np.array([params_m.get(&#x27;dx_m&#x27;), params_m.get(&#x27;dy_m&#x27;), params_m.get(&#x27;dz_m&#x27;)])))
-            w[&#x27;b&#x27;] = tuple(map(float,np.array(w[&#x27;b&#x27;]) + np.array([params_m.get(&#x27;dx_m&#x27;), params_m.get(&#x27;dy_m&#x27;), params_m.get(&#x27;dz_m&#x27;)])))
-
-    def rotate_ZtoY(self):
-        &quot;&quot;&quot;
-            Rotate the object through 90 degrees around X
-        &quot;&quot;&quot;
-        R = np.array([[1, 0, 0],[0,  0, 1],[0,  -1, 0]])
-        return self._rotate(R)
-    
-    def rotate_ZtoX(self):
-        &quot;&quot;&quot;
-            Rotate the object through 90 degrees around Y
-        &quot;&quot;&quot;
-        R = np.array([[0, 0, 1],[0,  1, 0],[-1,  0, 0]])
-        return self._rotate(R)
-
-    def rotate_around_X(self, angle_deg):
-        &quot;&quot;&quot;
-            Rotate the object through angle_deg degrees around X
-        &quot;&quot;&quot;
-        ca, sa = self._cos_sin(angle_deg)
-        R = np.array([[1, 0, 0],
-                      [0, ca, -sa],
-                      [0, sa, ca]])
-        return self._rotate(R)
-
-    def rotate_around_Y(self, angle_deg):
-        &quot;&quot;&quot;
-            Rotate the object through angle_deg degrees around Y
-        &quot;&quot;&quot;
-        ca, sa = self._cos_sin(angle_deg)
-        R = np.array([[ca, 0, sa],
-                      [0, 1, 0],
-                      [-sa, 0, ca]])
-        return self._rotate(R)
-
-    def rotate_around_Z(self, angle_deg):
-        &quot;&quot;&quot;
-            Rotate the object through angle_deg degrees around Z
-        &quot;&quot;&quot;
-        ca, sa = self._cos_sin(angle_deg)
-        R = np.array([[ca, -sa, 0],
-                      [sa, ca, 0],
-                      [0, 0, 1]])
-        return self._rotate(R)
-
-    def connect_ends(self, other, tol=1e-3, verbose = False):
-        &quot;&quot;&quot;
-            Check both ends of the wire to see if they lie on any wires in the specified object,
-            and if so, split the wires of the specified object so that NEC considers them to be
-            a valid T junction. Usage is:
-
-            wire.connect_ends(object, [tol in m], [verbose])
-
-            if verbose is True, details of the wire connection(s) are printed
-        &quot;&quot;&quot;
-        wires_to_add=[]
-        for ws in self.wires:
-            if(verbose):
-                print(f&quot;\nChecking if ends of wire from {ws[&#x27;a&#x27;]} to {ws[&#x27;b&#x27;]} should connect to any of {len(other.wires)} other wires:&quot;)
-            for es in [ws[&quot;a&quot;], ws[&quot;b&quot;]]:
-                for wo in other.wires:
-                    if (self._point_should_connect_to_wire(es,wo,tol)):
-                        wire_seg_status = f&quot;{wo[&#x27;nS&#x27;]} segment&quot; if wo[&#x27;nS&#x27;] &gt; 0 else &#x27;unsegmented&#x27;
-                        length_orig = np.linalg.norm(np.array(wo[&quot;a&quot;]) - np.array(wo[&quot;b&quot;]))
-                        b_orig = wo[&quot;b&quot;]
-                        wo[&#x27;b&#x27;]=tuple(es)
-                        length_shortened = np.linalg.norm(np.array(wo[&quot;a&quot;]) - np.array(wo[&quot;b&quot;]))
-                        nS_shortened = max(1, int(wo[&#x27;nS&#x27;]*length_shortened/length_orig))
-                        nS_orig = wo[&#x27;nS&#x27;]
-                        wo[&#x27;nS&#x27;] = nS_shortened
-                        nS_remainder = max(1,nS_orig - nS_shortened)
-                        wires_to_add.append( (wo[&#x27;iTag&#x27;], nS_remainder, *wo[&#x27;b&#x27;], *b_orig, wo[&#x27;wr&#x27;]) )
-                        length_remainder = np.linalg.norm(np.array(wo[&quot;b&quot;]) - np.array(b_orig))
-                        if(verbose):
-                            print(f&quot;Inserting end of wire at {wo[&#x27;b&#x27;]} into {wire_seg_status} wire {length_orig}m wire from {wo[&#x27;a&#x27;]} to {b_orig}:&quot;)
-                            print(f&quot;    by shortening wire to end at {wo[&#x27;b&#x27;]}: {length_shortened}m, using {nS_shortened} segments&quot;)
-                            print(f&quot;    and adding wire from {wo[&quot;b&quot;]} to {b_orig}:  {length_remainder}m using {nS_remainder} segments&quot;)
-                        break #(for efficiency only)
-        for params in wires_to_add:
-            other._add_wire(*params)
-
-#===============================================================
-# internal functions for class GeometryObject
-#===============================================================
-
-    def _cos_sin(self,angle_deg):
-        angle_rad = math.pi*angle_deg/180
-        ca = math.cos(angle_rad)
-        sa = math.sin(angle_rad)
-        return ca, sa
-    
-    def _rotate(self, R):
-        for w in self.wires:
-            a = np.array(w[&#x27;a&#x27;])
-            b = np.array(w[&#x27;b&#x27;])
-            w[&#x27;a&#x27;] = tuple(map(float, R @ a))
-            w[&#x27;b&#x27;] = tuple(map(float, R @ b))
-
-    def _add_wire(self, iTag, nS, x1, y1, z1, x2, y2, z2, wr):
-        self.wires.append({&quot;iTag&quot;:iTag, &quot;nS&quot;:nS, &quot;a&quot;:(x1, y1, z1), &quot;b&quot;:(x2, y2, z2), &quot;wr&quot;:wr})
-
-    def _get_wires(self):
-        return self.wires
-
-    def _point_should_connect_to_wire(self,P, wire, tol=1e-3):
-        P = np.array(P, dtype=float)
-        A = np.array(wire[&#x27;a&#x27;], dtype=float)
-        B = np.array(wire[&#x27;b&#x27;], dtype=float)
-        AB = B - A
-        AP = P - A
-        AB_len = np.linalg.norm(AB)
-        # can&#x27;t connect to a zero length wire using the splitting method
-        if AB_len == 0:
-            return False
-        
-        # Check perpendicular distance from wire axis
-        # if we aren&#x27;t close enough to the wire axis to need to connect, return false
-        # NOTE: need to align tol with nec&#x27;s check of volumes intersecting
-        perp_dist = np.linalg.norm(np.cross(AP, AB)) / AB_len
-        if perp_dist &gt; tol: 
-            return False    
-
-        # Project point onto the wire to get fractional position
-        alpha = np.dot(AP, AB) / (AB_len**2)
-        if not (0 &lt;= alpha &lt;= 1):
-            return False  # point is on the wire axis but not between the wire ends
-
-        # If we are within allowable tolerance of the wire ends, don&#x27;t split the wire
-        dist_from_end = min(alpha*AB_len, (1-alpha)*AB_len)
-        if (dist_from_end &lt; tol):
-            return False
-
-        # IF the wire is already segmented (e.g. in a grid), check how far from the
-        # *nearest* segment boundary this projected alpha is
-        if(wire[&#x27;nS&#x27;]&gt;0):
-            segment_pitch = 1 / wire[&#x27;nS&#x27;]
-            nearest_alpha = round(alpha / segment_pitch) * segment_pitch
-            alpha_dist = abs(alpha - nearest_alpha)
-            alpha_tol = tol / AB_len  # convert spatial tol to alpha-space
-            if alpha_dist &lt; alpha_tol:
-                return False  # near a segment end â€” NEC will handle this as a normal junction
-
-        return True  # wire needs to be split to allow the connection
-
-    def _point_on_object(self,geom_object, wire_index, alpha_wire):
-        if(wire_index&gt; len(geom_object.wires)):
-            wire_index = len(geom_object.wires)
-            alpha_wire = 1.0
-        w = geom_object.wires[wire_index]
-        A = np.array(w[&quot;a&quot;], dtype=float)
-        B = np.array(w[&quot;b&quot;], dtype=float)
-        P = A + alpha_wire * (B-A)
-        return P
-         
-#=================================================================================
-# Units processor
-#=================================================================================
-
-class _units:
-
-    def _from_suffixed_dimensions(self, params: dict, whitelist=[]) -&gt; dict:
-        &quot;&quot;&quot;Converts suffixed values like &#x27;d_mm&#x27; to meters.
-
-        Output keys have &#x27;_m&#x27; suffix unless they already end with &#x27;_m&#x27;,
-        in which case they are passed through unchanged (assumed meters).
-        &quot;&quot;&quot;
-
-        _UNIT_FACTORS = {
-        &quot;m&quot;: 1.0,
-        &quot;mm&quot;: 1000.0,
-        &quot;cm&quot;: 100.0,
-        &quot;in&quot;: 39.3701,
-        &quot;ft&quot;: 3.28084,
-        }
-
-        out = {}
-        names_seen = []
-        for key, value in params.items():
-    
-            if not isinstance(value, (int, float)):
-                continue  # skip nested dicts or other structures
-
-            name = key
-            suffix = &quot;&quot;
-            if &quot;_&quot; in name:
-                name, suffix = name.rsplit(&quot;_&quot;, 1)
-                
-            if(name in names_seen):
-                warnstr = f&quot;Duplicate value of &#x27;{name}&#x27; seen: ignoring latest ({key} = {value})&quot;
-                warnings.warn(warnstr)
-                continue
-
-            names_seen.append(name)
-
-            if suffix in _UNIT_FACTORS:
-                # Convert value, output key with &#x27;_m&#x27; suffix
-                out[name + &quot;_m&quot;] = value / _UNIT_FACTORS[suffix]
-                continue
-
-            if key in whitelist:
-                continue
-            
-            # fallback: no recognised suffix, assume metres
-            warnings.warn(f&quot;No recognised units specified for {name}: &#x27;{suffix}&#x27; specified, metres assumed&quot;)
-            # output key gets &#x27;_m&#x27; suffix added
-            out[name + &quot;_m&quot;] = value
-
-        return out
-
-
-
-</pre>
+<title></title><link rel='stylesheet' href='./docu-lite-style.css' /><details><summary><span class ='class signature'>NECModel:</span></summary>
+<pre class ='class content'></pre>
 </details>
 <details><summary><span class ='def signature'> __init__(self, working_dir, nec_exe_path, model_name = "Unnamed_Antennna", verbose=False)</span></summary>
 <pre class ='def content'>        self.verbose = verbose
@@ -564,7 +34,6 @@ class _units:
         self.max_total_gain = None
         self.vswr = None
         self.tags_info = []
-
 </pre>
 </details>
 </details>
@@ -579,7 +48,6 @@ class _units:
         self.nec_in = self.working_dir + &quot;\\&quot; + self.model_name +  &quot;.nec&quot;
         self.nec_out = self.working_dir + &quot;\\&quot; + self.model_name +  &quot;.out&quot;
         self._write_runner_files()
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> set_wire_conductivity(self, sigma)</span></summary>
@@ -589,7 +57,6 @@ class _units:
 </pre>
 <pre class ='def content'>        self.default_wire_sigma = sigma
         self.LOADS.append({&#x27;iTag&#x27;: 0, &#x27;load_type&#x27;: &#x27;conductivity&#x27;, &#x27;RoLuCp&#x27;: (sigma, 0, 0), &#x27;alpha&#x27;: None})
-  
 </pre>
 </details>
 <details><summary><span class ='def signature'> set_frequency(self, MHz)</span></summary>
@@ -600,7 +67,6 @@ class _units:
 <pre class ='def content'>        self.MHz = MHz
         lambda_m = 300/MHz
         self.segLength_m = lambda_m / self.nSegs_per_wavelength
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> set_gain_point(self, azimuth_deg, elevation_deg)</span></summary>
@@ -612,7 +78,6 @@ class _units:
 <pre class ='def content'>        self.az_datum_deg = azimuth_deg
         self.el_datum_deg = elevation_deg
 
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> set_angular_resolution(self, az_step_deg, el_step_deg)</span></summary>
@@ -623,7 +88,6 @@ class _units:
 </pre>
 <pre class ='def content'>        self.az_step_deg = az_step_deg
         self.el_step_deg = el_step_deg
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> set_ground(self, eps_r, sigma, **origin_height)</span></summary>
@@ -645,7 +109,6 @@ class _units:
             self.origin_height_m = self._units._from_suffixed_dimensions(origin_height)[&#x27;origin_height_m&#x27;]
             if(self.el_datum_deg &lt;= 0):
                 self.el_datum_deg = 1
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> place_RLC_load(self, geomObj, R_Ohms, L_uH, C_pf, load_type = 'series', load_alpha_object=-1, load_wire_index=-1, load_alpha_wire=-1)</span></summary>
@@ -669,7 +132,6 @@ class _units:
 <pre class ='def content'>        iTag = self.LOADS_start_tag + len(self.LOADS)
         self.LOADS.append({&#x27;iTag&#x27;: iTag, &#x27;load_type&#x27;: load_type, &#x27;RoLuCp&#x27;: (R_Ohms, L_uH, C_pf), &#x27;alpha&#x27;: None})
         self._insert_special_segment(geomObj, iTag, load_alpha_object, load_wire_index, load_alpha_wire)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> place_feed(self,  geomObj, feed_alpha_object=-1, feed_wire_index=-1, feed_alpha_wire=-1)</span></summary>
@@ -689,7 +151,6 @@ class _units:
         &quot;&quot;&quot;
 </pre>
 <pre class ='def content'>        self._insert_special_segment(geomObj, self.EX_tag, feed_alpha_object, feed_wire_index, feed_alpha_wire)
-   
 </pre>
 </details>
 <details><summary><span class ='def signature'> add(self, geomObj, wireframe_color = 'darkgoldenrod')</span></summary>
@@ -701,7 +162,6 @@ class _units:
 <pre class ='def content'>        geomObj.wireframe_color = wireframe_color
         self.tags_info.append({&#x27;base_tag&#x27;:geomObj.base_tag,&#x27;wf_col&#x27;:geomObj.wireframe_color})
         self.geometry.append(geomObj)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> write_nec(self)</span></summary>
@@ -768,7 +228,6 @@ class _units:
                 f.write(f&quot;RP 0 {n_theta} {n_phi} 1003 {theta_start_deg} {phi_start_deg} {d_theta} {d_phi}\n&quot;)
                 
             f.write(&quot;EN&quot;)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> run_nec(self)</span></summary>
@@ -815,7 +274,6 @@ class _units:
 #===============================================================
 # internal functions for class NECModel
 #===============================================================
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _set_frequency_sweep(self, MHz, MHz_stop, MHz_step)</span></summary>
@@ -830,7 +288,6 @@ class _units:
         lambda_m = 300/MHz_stop
         self.segLength_m = lambda_m / self.nSegs_per_wavelength
         self.set_angular_resolution(10,10)
-
 
 </pre>
 </details>
@@ -847,7 +304,6 @@ class _units:
         max_theta = theta_start + d_theta * (int((theta_range - theta_start) / d_theta))
         n_theta = 1 + int((max_theta - theta_start) / d_theta)
         return theta_start, d_theta, n_theta
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _write_runner_files(self)</span></summary>
@@ -867,7 +323,6 @@ class _units:
                     f.write(content)
             except Exception as e:
                 print(f&quot;Error writing file {filepath}: {e}&quot;)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _insert_special_segment(self, geomObj, item_iTag, item_alpha_object, item_wire_index, item_alpha_wire)</span></summary>
@@ -912,7 +367,6 @@ class _units:
 #=================================================================================
 # The geometry object that holds a single component plus its methods
 #=================================================================================
-
 </pre>
 </details>
 <details><summary><span class ='class signature'>GeometryObject:</span></summary>
@@ -921,7 +375,6 @@ class _units:
 <pre class ='def content'>        self.wires = wires  # list of wire dicts with iTag, nS, x1, y1, ...
         self._units = _units()
         self.wireframe_color = None
-
 </pre>
 </details>
 </details>
@@ -935,7 +388,6 @@ class _units:
         for w in self.wires:
             w[&#x27;a&#x27;] = tuple(map(float,np.array(w[&#x27;a&#x27;]) + np.array([params_m.get(&#x27;dx_m&#x27;), params_m.get(&#x27;dy_m&#x27;), params_m.get(&#x27;dz_m&#x27;)])))
             w[&#x27;b&#x27;] = tuple(map(float,np.array(w[&#x27;b&#x27;]) + np.array([params_m.get(&#x27;dx_m&#x27;), params_m.get(&#x27;dy_m&#x27;), params_m.get(&#x27;dz_m&#x27;)])))
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> rotate_ZtoY(self)</span></summary>
@@ -945,7 +397,6 @@ class _units:
 </pre>
 <pre class ='def content'>        R = np.array([[1, 0, 0],[0,  0, 1],[0,  -1, 0]])
         return self._rotate(R)
-    
 </pre>
 </details>
 <details><summary><span class ='def signature'> rotate_ZtoX(self)</span></summary>
@@ -955,7 +406,6 @@ class _units:
 </pre>
 <pre class ='def content'>        R = np.array([[0, 0, 1],[0,  1, 0],[-1,  0, 0]])
         return self._rotate(R)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> rotate_around_X(self, angle_deg)</span></summary>
@@ -968,7 +418,6 @@ class _units:
                       [0, ca, -sa],
                       [0, sa, ca]])
         return self._rotate(R)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> rotate_around_Y(self, angle_deg)</span></summary>
@@ -981,7 +430,6 @@ class _units:
                       [0, 1, 0],
                       [-sa, 0, ca]])
         return self._rotate(R)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> rotate_around_Z(self, angle_deg)</span></summary>
@@ -994,7 +442,6 @@ class _units:
                       [sa, ca, 0],
                       [0, 0, 1]])
         return self._rotate(R)
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> connect_ends(self, other, tol=1e-3, verbose = False)</span></summary>
@@ -1037,7 +484,6 @@ class _units:
 #===============================================================
 # internal functions for class GeometryObject
 #===============================================================
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _cos_sin(self,angle_deg)</span></summary>
@@ -1045,7 +491,6 @@ class _units:
         ca = math.cos(angle_rad)
         sa = math.sin(angle_rad)
         return ca, sa
-    
 </pre>
 </details>
 <details><summary><span class ='def signature'> _rotate(self, R)</span></summary>
@@ -1054,17 +499,14 @@ class _units:
             b = np.array(w[&#x27;b&#x27;])
             w[&#x27;a&#x27;] = tuple(map(float, R @ a))
             w[&#x27;b&#x27;] = tuple(map(float, R @ b))
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _add_wire(self, iTag, nS, x1, y1, z1, x2, y2, z2, wr)</span></summary>
 <pre class ='def content'>        self.wires.append({&quot;iTag&quot;:iTag, &quot;nS&quot;:nS, &quot;a&quot;:(x1, y1, z1), &quot;b&quot;:(x2, y2, z2), &quot;wr&quot;:wr})
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _get_wires(self)</span></summary>
 <pre class ='def content'>        return self.wires
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _point_should_connect_to_wire(self,P, wire, tol=1e-3)</span></summary>
@@ -1106,7 +548,6 @@ class _units:
                 return False  # near a segment end â€” NEC will handle this as a normal junction
 
         return True  # wire needs to be split to allow the connection
-
 </pre>
 </details>
 <details><summary><span class ='def signature'> _point_on_object(self,geom_object, wire_index, alpha_wire)</span></summary>
@@ -1122,7 +563,6 @@ class _units:
 #=================================================================================
 # Units processor
 #=================================================================================
-
 </pre>
 </details>
 <details><summary><span class ='class signature'>_units:</span></summary>
@@ -1175,7 +615,6 @@ class _units:
             out[name + &quot;_m&quot;] = value
 
         return out
-
 
 
 </pre>

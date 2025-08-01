@@ -3,15 +3,6 @@
     Works well but misses file-level docstring
 """
 
-class files:
-    def __init__(self, filepath):
-        self.lines = ""
-        self.lines = self._read(filepath)
-        
-    def _read(self, filepath):
-        with open(filepath) as f:
-            return f.readlines()
-
 class pbBlock:
     def __init__(self, first_line_number, doclines, pattern_list):
         self.pattern_list = pattern_list
@@ -69,11 +60,10 @@ class pbBlock:
         if(docstring_start>=0):
             self.docstring = doclines[docstring_start:docstring_end + 1]
             content_start = docstring_end + 1
-        print(first_line_number, docstring_start, docstring_end, content_end)
         self.body = doclines[content_start:content_end]
         
 class pbBlocks:
-    def __init__(self, doclines, patterns = ['def', 'class']):
+    def __init__(self, doclines, patterns):
         self.blocks = []
 
         # get all blocks in a flat list
@@ -81,6 +71,7 @@ class pbBlocks:
             block = pbBlock(line_no, doclines, patterns)
             if(block.pattern):
                 self.blocks.append(block)
+                print(f"{line_no} {block.first_line_text}")
 
         # tell each object what its indent level is within the document
         indents =[0]
@@ -141,8 +132,9 @@ def main():
     input_file = r"C:\Users\drala\Documents\Projects\GitHub\NECBOL\necbol\modeller.py"
     output_html_file = "test.html"
 
-    lines = files(input_file).lines
-    blocks = pbBlocks(lines, ['def', 'class']).blocks
+    with open(input_file) as f:
+        lines = f.readlines()
+    blocks = pbBlocks(lines, ['def', 'class', 'docstring']).blocks
     
     htm = pbBrowser(blocks).html
     with open(output_html_file, "w", encoding="utf-8") as f:

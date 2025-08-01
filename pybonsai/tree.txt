@@ -1,0 +1,20 @@
+document
+	docstring
+	class
+	def
+	body
+
+docstring
+	none
+
+class
+	docstring
+	class
+	def
+
+def
+	docstring
+	body
+
+body 
+	none	
